@@ -125,7 +125,7 @@ void setup() {
   digitalWrite(RS485_DE_RE, LOW);
   //RS485Serial.begin(9600, SERIAL_8N1, RXD2, TXD2);
   //RS485Serial.begin(9600, SERIAL_8N2, RXD2, TXD2);
-  RS485Serial.begin(1200, SERIAL_8N2, RXD2, TXD2);
+  RS485Serial.begin(9600, SERIAL_8N2, RXD2, TXD2);
   // node.begin(SENSOR_ADR[0], RS485Serial);
   // node.preTransmission(preTransmission);
   // node.postTransmission(postTransmission);
