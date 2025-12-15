@@ -12,15 +12,15 @@
 // 0x0006 電流1[A] 電流の1000倍値
 // 0x0008 電流2[A] 電流の1000倍値
 // 0x000A 電流3[A] 電流の1000倍値
-// 0x000C 力率 力率の100倍値
-// 0x000E 周波数[Hz] 周波数の10倍値
+// 0x000C 力率 力率の100倍値  power_factor
+// 0x000E 周波数[Hz] 周波数の10倍値 frequency
 // 0x0010 有効電力[W] 有効電力の10倍値 effective_electric_power
 // 0x0012 無効電力[Var] 無効電力の10倍値 reactive_electric_power
 // 0x0200 積算有効電力量[Wh]  integrated_effective_electric_power
 // 0x0202 積算回生電力量[Wh]  integrated_regenerated_electric_power
-// 0x0204 積算進み無効電力量[Wh]  integrated_leading_reactive_electric_power
-// 0x0206 積算遅れ無効電力量[Wh]  integrated_lagging_reactive_electric_power
-// 0x0208 積算総合無効電力量[Wh] 
+// 0x0204 積算進み無効電力量[Varh]  integrated_leading_reactive_electric_power
+// 0x0206 積算遅れ無効電力量[Varh]  integrated_lagging_reactive_electric_power
+// 0x0208 積算総合無効電力量[Varh]  integrated_total_reactive_electric_power
 // 0x0220 積算有効電力量[kWh] 
 // 0x0222 積算回生電力量[kWh] 
 // 0x0224 積算進み無効電力量[kVarh] 
@@ -146,12 +146,21 @@ void setup() {
 }
 
 void loop() {
+  float volt1;
+  float volt2;
+  float volt3;
+  float curr1;
+  float curr2;
+  float curr3;
+  float power_factor;
+  float frequency;
   float effectpow;
   float reactpow;
   uint32_t ieep;
   uint32_t irep;
   uint32_t ileadep;
   uint32_t ilagep;
+  uint32_t ittlep;
   // NTP時刻取得
   timeClient.update();
   //String iso8601 = "ISODate(\""+getISOTimestamp(timeClient)+"\")";
@@ -163,35 +172,62 @@ void loop() {
     node.preTransmission(preTransmission);
     node.postTransmission(postTransmission);
     // Modbusでセンサーデータ取得
+    // 0x0000 電圧1[V] 電圧の10倍値
+    // 0x0002 電圧2[V] 電圧の10倍値
+    // 0x0004 電圧3[V] 電圧の10倍値
+    // 0x0006 電流1[A] 電流の1000倍値
+    // 0x0008 電流2[A] 電流の1000倍値
+    // 0x000A 電流3[A] 電流の1000倍値 
+    // 0x000C 力率 力率の100倍値 power_factor
+    // 0x000E 周波数 周波数の10倍値 frequency
     // 0x0010 有効電力[W] 有効電力の10倍値 effective_electric_power
     // 0x0012 無効電力[Var] 無効電力の10倍値 reactive_electric_power
-    uint8_t result = node.readHoldingRegisters(0x0010, 4); // 4レジスタ例
+    uint8_t result = node.readHoldingRegisters(0x0000, 20); // 20レジスタ
     if (result == node.ku8MBSuccess) {
-      effectpow=(node.getResponseBuffer(0x0)*0x10000+node.getResponseBuffer(0x1))/10.0f;
-      reactpow=(node.getResponseBuffer(0x2)*0x10000+node.getResponseBuffer(0x3))/10.0f;
+      volt1=(node.getResponseBuffer(0x0)*0x10000+node.getResponseBuffer(0x1))/10.0f;
+      volt2=(node.getResponseBuffer(0x2)*0x10000+node.getResponseBuffer(0x3))/10.0f;
+      volt3=(node.getResponseBuffer(0x4)*0x10000+node.getResponseBuffer(0x5))/10.0f;
+      curr1=(node.getResponseBuffer(0x6)*0x10000+node.getResponseBuffer(0x7))/1000.0f;
+      curr2=(node.getResponseBuffer(0x8)*0x10000+node.getResponseBuffer(0x9))/1000.0f;
+      curr3=(node.getResponseBuffer(0xA)*0x10000+node.getResponseBuffer(0xB))/1000.0f;
+      power_factor=(node.getResponseBuffer(0xC)*0x10000+node.getResponseBuffer(0xD))/100.0f;
+      frequency=(node.getResponseBuffer(0xE)*0x10000+node.getResponseBuffer(0xF))/10.0f;
+      effectpow=(node.getResponseBuffer(0x10)*0x10000+node.getResponseBuffer(0x11))/10.0f;
+      reactpow=(node.getResponseBuffer(0x12)*0x10000+node.getResponseBuffer(0x13))/10.0f;
   // 0x0200 積算有効電力量[Wh]  integrated_effective_electric_power
   // 0x0202 積算回生電力量[Wh]  integrated_regenerated_electric_power
   // 0x0204 積算進み無効電力量[Wh]  integrated_leading_reactive_electric_power
   // 0x0206 積算遅れ無効電力量[Wh]  integrated_lagging_reactive_electric_power
+  // 0x0208 積算総合無効電力量[Varh]  integrated_total_reactive_electric_power
       delay(100);
-      result = node.readHoldingRegisters(0x0200, 8); // 8レジスタ
+      result = node.readHoldingRegisters(0x0200, 10); // 10レジスタ
       if (result == node.ku8MBSuccess) {
         ieep=node.getResponseBuffer(0x0)*0x10000+node.getResponseBuffer(0x1);
         irep=node.getResponseBuffer(0x2)*0x10000+node.getResponseBuffer(0x3);
         ileadep=node.getResponseBuffer(0x4)*0x10000+node.getResponseBuffer(0x5);
         ilagep=node.getResponseBuffer(0x6)*0x10000+node.getResponseBuffer(0x7);
-    
+        ittlep=node.getResponseBuffer(0x8)*0x10000+node.getResponseBuffer(0x9);
+
         // JSON形式でMQTT送信
         String payload = "{";
         payload += "\"recorded\" : " + iso8601;
         payload += ", \"sensor_id\" : " + String(SENSOR_ADR[i]); // modbus address
         payload += ", \"channel_id\" : " + String(ModbusID); // modbus id
-        payload += ", \"effec_ep\" : " + String(effectpow, 3);
-        payload += ", \"reac_ep\":" + String(reactpow, 3);
+        payload += ", \"volt1\" : " + String(volt1, 1);       
+        payload += ", \"volt2\" : " + String(volt2, 1);       
+        payload += ", \"volt3\" : " + String(volt3, 1);       
+        payload += ", \"curr1\" : " + String(curr1, 3);       
+        payload += ", \"curr2\" : " + String(curr2, 3);       
+        payload += ", \"curr3\" : " + String(curr3, 3);       
+        payload += ", \"power_factor\" : " + String(power_factor, 2);
+        payload += ", \"frequency\":" + String(frequency, 1);        
+        payload += ", \"effec_ep\" : " + String(effectpow, 1);
+        payload += ", \"reac_ep\":" + String(reactpow, 1);
         payload += ", \"intg_effec_ep\":" + String(ieep);
         payload += ", \"intg_regenerated_ep\":" + String(irep);
         payload += ", \"intg_leading_reac_ep\":" + String(ileadep);
         payload += ", \"intg_lagging_reac_ep\":" + String(ilagep);
+        payload += ", \"intg_total_reac_ep\":" + String(ittlep);
         payload += ", \"migrated\" : false }";
 
         // // 日付をまたいでいたら積算値をクリア
