@@ -165,7 +165,7 @@ void loop() {
   timeClient.update();
   //String iso8601 = "ISODate(\""+getISOTimestamp(timeClient)+"\")";
   String iso8601 = "\""+getISOTimestamp(timeClient)+"\"";
-  int hours = timeClient.getHours();
+  //int hours = timeClient.getHours();
 
   for(int i=0;i<SENSOR_NUM;i++){
     node.begin(SENSOR_ADR[i], RS485Serial);
